@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
-import { MongoClient, ServerApiVersion } from 'mongodb';
+import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 
 dotenv.config();
 
@@ -67,6 +67,27 @@ async function run() {
                 })
             }
         });
+
+        // Single Item
+
+        app.get('/listings/:id',async (req,res)=>{
+            try{
+                const id=req.params.id;
+                const item=await listings.findOne({_id:new ObjectId(id)});
+                // console.log(item);
+                res.send({
+                    success:true,
+                    data:item
+                });
+            }
+            catch(error){
+                res.status(500).send({
+                    success:false,
+                    message:error.message
+                })
+            }
+        });
+
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
