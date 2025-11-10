@@ -50,6 +50,24 @@ async function run() {
             }
         });
 
+        // All Items
+
+        app.get('/listings',async (req,res)=>{
+            try{
+                const list=await listings.find().sort({date:-1}).toArray();
+                res.send({
+                    success:true,
+                    data:list
+                });
+            }
+            catch(error){
+                res.status(500).send({
+                    success:false,
+                    message:error.message
+                })
+            }
+        });
+
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
