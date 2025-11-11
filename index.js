@@ -26,73 +26,85 @@ async function run() {
     try {
         await client.connect();
 
-        const db=client.db('PawMart');
-        const categories=db.collection('categories');
-        const listings=db.collection('listings');
-        const orders=db.collection('orders');
+        const db = client.db('PawMart');
+        const categories = db.collection('categories');
+        const listings = db.collection('listings');
+        const orders = db.collection('orders');
 
 
         // All categories
 
-        app.get('/categories',async (req,res)=>{
-            try{
-                const cat=await categories.find().toArray();
+        app.get('/categories', async (req, res) => {
+            try {
+                const cat = await categories.find().toArray();
                 res.send({
-                    success:true,
-                    data:cat
+                    success: true,
+                    data: cat
                 });
             }
-            catch(error){
+            catch (error) {
                 res.status(500).send({
-                    success:false,
-                    message:error.message
+                    success: false,
+                    message: error.message
                 });
             }
         });
 
         // All Items
 
-        app.get('/listings',async (req,res)=>{
-            try{
-                const list=await listings.find().sort({date:-1}).toArray();
+        app.get('/listings', async (req, res) => {
+            try {
+                const list = await listings.find().sort({ date: -1 }).toArray();
                 res.send({
-                    success:true,
-                    data:list
+                    success: true,
+                    data: list
                 });
             }
-            catch(error){
+            catch (error) {
                 res.status(500).send({
-                    success:false,
-                    message:error.message
+                    success: false,
+                    message: error.message
                 })
             }
         });
 
         // Single Item
 
-        app.get('/listings/:id',async (req,res)=>{
-            try{
-                const id=req.params.id;
-                const item=await listings.findOne({_id:new ObjectId(id)});
+        app.get('/listings/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const item = await listings.findOne({ _id: new ObjectId(id) });
                 // console.log(item);
                 res.send({
-                    success:true,
-                    data:item
+                    success: true,
+                    data: item
                 });
             }
-            catch(error){
+            catch (error) {
                 res.status(500).send({
-                    success:false,
-                    message:error.message
+                    success: false,
+                    message: error.message
                 })
             }
         });
 
+        // Order
+
+        app.post('/order', async (req, res) => {
+            try {
+                const newOrder = req.body;
+                const result = await orders.insertOne(newOrder);
+                res.send(result);
+            }
+            catch(error){
+                res.status(500).send({ success: false, message: error.message })
+            }
+        })
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
-        
+
     }
 }
 
