@@ -101,6 +101,19 @@ async function run() {
             }
         })
 
+        // Add new listing
+
+        app.post('/listing', async (req, res) => {
+            try {
+                const newListing = req.body;
+                const result = await listings.insertOne(newListing);
+                res.send(result);
+            }
+            catch(error){
+                res.status(500).send({ success: false, message: error.message })
+            }
+        })
+
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
