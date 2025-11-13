@@ -114,6 +114,54 @@ async function run() {
             }
         })
 
+        // Delete listing
+
+        app.delete('/listings/:id',async(req,res)=>{
+            try{
+            const id=req.params.id;
+            const query={_id:new ObjectId(id)}
+            const result=await listings.deleteOne(query);
+            res.send(result);
+            }
+            catch(error){
+                res.status(500).send({ success: false, message: error.message })
+            }
+        })
+
+        // Update listing
+
+        app.patch('/listings/:id',async(req,res)=>{
+            try{
+                const id=req.params.id;
+                const updatedData=req.body;
+                
+                const result=await listings.updateOne(
+                    {_id: new ObjectId(id)},
+                    {
+                        $set:{
+                            name:updatedData.name,
+                            price:updatedData.price,
+                            location:updatedData.location,
+                            description:updatedData.description,
+                            image:updatedData.image,
+                            date:updatedData.date
+                        }
+                    }
+                )
+
+                res.send({
+                    success:true,
+                    message: 'Listing updated successfully'
+                })
+            }
+            catch(error){
+                res.status(500).send({
+                    success:false,
+                    message:error.message
+                })
+            }
+        })
+
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
