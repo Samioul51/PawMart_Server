@@ -101,6 +101,24 @@ async function run() {
             }
         })
 
+        // All orders
+
+        app.get('/orders', async (req, res) => {
+            try {
+                const list = await orders.find().toArray();
+                res.send({
+                    success: true,
+                    data: list
+                });
+            }
+            catch (error) {
+                res.status(500).send({
+                    success: false,
+                    message: error.message
+                })
+            }
+        });
+
         // Add new listing
 
         app.post('/listing', async (req, res) => {
