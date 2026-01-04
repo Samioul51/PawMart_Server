@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -11,6 +12,20 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.set("trust proxy", 1);
+
+// Contact request limiter
+
+const contactLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 1,
+    message: {
+        success: false,
+        message: "Too many messages sent. Please try again later."
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 const uri = `mongodb+srv://${process.env.Name}:${process.env.Password}@cluster0.tugpfto.mongodb.net/?appName=Cluster0`;
 
@@ -24,7 +39,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
 
         const db = client.db('PawMart');
         const categories = db.collection('categories');
@@ -54,19 +69,57 @@ async function run() {
 
         app.get('/listings', async (req, res) => {
             try {
-                const list = await listings.find().sort({ date: -1 }).toArray();
+                const { page = 1, limit = 12, category, search, sort } = req.query;
+                const skip = (parseInt(page) - 1) * parseInt(limit);
+
+                let filter = {};
+
+                function escapeRegex(text) {
+                    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+                }
+
+                // Category filter
+                if (category && category !== 'All')
+                    filter.category = { $regex: escapeRegex(category), $options: 'i' };
+
+
+
+                // Search filter 
+                if (search)
+                    filter.name = { $regex: search, $options: 'i' };
+
+                // Sorting
+                let sortOption = {};
+                if (sort === 'price_asc')
+                    sortOption.price = 1;
+                else if (sort === 'price_desc')
+                    sortOption.price = -1;
+                else
+                    sortOption.date = -1;
+
+                const total = await listings.countDocuments(filter);
+
+                const data = await listings.find(filter)
+                    .sort(sortOption)
+                    .skip(skip)
+                    .limit(parseInt(limit))
+                    .toArray();
+
                 res.send({
                     success: true,
-                    data: list
+                    data,
+                    total,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(total / parseInt(limit))
                 });
-            }
-            catch (error) {
+            } catch (error) {
                 res.status(500).send({
                     success: false,
                     message: error.message
-                })
+                });
             }
         });
+
 
         // Single Item
 
@@ -96,7 +149,7 @@ async function run() {
                 const result = await orders.insertOne(newOrder);
                 res.send(result);
             }
-            catch(error){
+            catch (error) {
                 res.status(500).send({ success: false, message: error.message })
             }
         })
@@ -127,58 +180,70 @@ async function run() {
                 const result = await listings.insertOne(newListing);
                 res.send(result);
             }
-            catch(error){
+            catch (error) {
                 res.status(500).send({ success: false, message: error.message })
             }
         })
 
         // Delete listing
 
-        app.delete('/listings/:id',async(req,res)=>{
-            try{
-            const id=req.params.id;
-            const query={_id:new ObjectId(id)}
-            const result=await listings.deleteOne(query);
-            res.send(result);
+        app.delete('/listings/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) }
+                const result = await listings.deleteOne(query);
+                res.send(result);
             }
-            catch(error){
+            catch (error) {
                 res.status(500).send({ success: false, message: error.message })
             }
         })
 
         // Update listing
 
-        app.patch('/listings/:id',async(req,res)=>{
-            try{
-                const id=req.params.id;
-                const updatedData=req.body;
-                
-                const result=await listings.updateOne(
-                    {_id: new ObjectId(id)},
+        app.patch('/listings/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const updatedData = req.body;
+
+                const result = await listings.updateOne(
+                    { _id: new ObjectId(id) },
                     {
-                        $set:{
-                            name:updatedData.name,
-                            price:updatedData.price,
-                            location:updatedData.location,
-                            description:updatedData.description,
-                            image:updatedData.image,
-                            date:updatedData.date
+                        $set: {
+                            name: updatedData.name,
+                            price: updatedData.price,
+                            location: updatedData.location,
+                            description: updatedData.description,
+                            image: updatedData.image,
+                            date: updatedData.date
                         }
                     }
                 )
 
                 res.send({
-                    success:true,
+                    success: true,
                     message: 'Listing updated successfully'
                 })
             }
-            catch(error){
+            catch (error) {
                 res.status(500).send({
-                    success:false,
-                    message:error.message
+                    success: false,
+                    message: error.message
                 })
             }
         })
+
+        // Contact Form
+
+        app.post("/contact", contactLimiter, async (req, res) => {
+            try {
+                const newMessage = req.body;
+                const result = await contact.insertOne(newMessage);
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ success: false, message: error.message });
+            }
+        });
 
         // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
