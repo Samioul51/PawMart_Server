@@ -45,6 +45,7 @@ async function run() {
         const categories = db.collection('categories');
         const listings = db.collection('listings');
         const orders = db.collection('orders');
+        const contact = db.collection('contact');
 
 
         // All categories
